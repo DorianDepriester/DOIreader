@@ -85,7 +85,7 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
 # =============================================================================    
     print('Start Processing')
     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-    dois=pd.read_table('dois.txt', header=None)
+    dois=pd.read_table(doi_list, header=None)
     authors=['Author{:0>2d}'.format(k) for k in range(1,21)]
     fields=['doi', 'title', 'journal', 'type', 'date', 'url']
     df=pd.DataFrame(columns=fields + authors, index=range(len(dois)))
