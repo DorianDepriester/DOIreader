@@ -85,27 +85,28 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
 # =============================================================================    
     print('Start Processing')
     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
-    dois=pd.read_table(doi_list, header=None)
+    dois_raw=pd.read_table(doi_list, header=None)
+    dois=dois_raw.loc[:,0].unique()
     authors=['Author{:0>2d}'.format(k) for k in range(1,21)]
-    fields=['doi', 'title', 'journal', 'type', 'date', 'url']
-    df=pd.DataFrame(columns=fields + authors, index=range(len(dois)))
+    fields=['title', 'journal', 'type', 'date', 'url']
+    df=pd.DataFrame(columns=fields + authors, index=dois)
     family_list=[]
     given_list=[]
     
-    for i,doip in dois.iterrows():
-        doi=doip[0]
-        df.loc[i,'doi']=doi
+    for i,doi in enumerate(dois):
         
         # Ensure valid URL
-        print('Fetching ' + doi + ' ...', end='')
+        print('Fetching ' + doi + '...', end=' ')
         if doi.startswith('doi.org/'):
-            doi='https://' + doi
+            doi_url='https://' + doi
         elif not doi.startswith(('http', 'https')):
-            doi='https://doi.org/' + doi 
+            doi_url='https://doi.org/' + doi
+        else:
+            doi_url=doi
         
         # Get JSON data
         try:
-            r = req.get(doi, headers={'Accept': 'application/json'})
+            r = req.get(doi_url, headers={'Accept': 'application/json'})
             json=pd.json_normalize(r.json())
             entry=json.loc[0]
             
@@ -127,7 +128,7 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
             if len(valid_urls):
                 url=valid_urls.loc[0]['URL']
             else:
-                url=doi
+                url=doi_url
                 
             # Format date
             if len(date)==3:
@@ -138,9 +139,9 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
                 fdate='{}'.format(*date)
             
             # Concatenate data
-            df.loc[i,fields[1:]]=(title, journal_fix, art_type, fdate, url)
+            df.loc[doi,fields]=(title, journal_fix, art_type, fdate, url)
             for k,author in authors.iterrows():
-                df.loc[i,'Author{:0>2d}'.format(k+1)]=[author['family'], author['given']]
+                df.loc[doi,'Author{:0>2d}'.format(k+1)]=[author['family'], author['given']]
                 family_list.append(author['family'])
                 given_list.append(author['given'])
                 
@@ -148,7 +149,7 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
             # The DOI cannot be found
             msg='Error {}: '.format(r.status_code) +  r.reason
             print('\n >> ' + msg + '!')
-            df.loc[i,'title']=msg
+            df.loc[doi,'title']=msg
                 
         print('------------------')
     
@@ -165,21 +166,21 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
         full_names = authorlist.loc[~strfilter]
         for j,full_name in full_names.iterrows():
             for column in df.iloc[:,len(fields):]:
-                for jj,data in enumerate(df.loc[:,column]):
+                for doi,data in df.loc[:,column].iteritems():
                     if isinstance(data,  list):
                         familyname=unidecode(data[0])
                         fisrtname=unidecode(data[1])
                         if (familyname == unidecode(full_name['familyname'])) and  (fisrtname in possible_abbrv(full_name['firstname']) ):
-                            df.loc[jj,column]=[full_name['familyname'], full_name['firstname']]
+                            df.loc[doi,column]=[full_name['familyname'], full_name['firstname']]
                             
     if format_author_names is not None:
         print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
         print('Format author names')        
         for column in df:
             if column.startswith('Author'):
-                for jj,author in enumerate(df.loc[:,column]):
+                for doi,author in df.loc[:,column].iteritems():
                     if isinstance(author, list):
-                        df.loc[jj,column]=format_parser(author,format_author_names)                           
+                        df.loc[doi,column]=format_parser(author,format_author_names)                           
                             
         
     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
@@ -188,7 +189,7 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
 
 #%%             
 if __name__ == "__main__":
-    df = doireader('doi.txt', format_author_names='Lastname, Firstname')    
-    df.to_excel('Bibliography.xlsx', index=False, freeze_panes=(1,0))
+    df = doireader('dois.txt', merge_similar_authors=False)    
+    df.to_excel('Bibliography.xlsx', freeze_panes=(1,0))
         
 
