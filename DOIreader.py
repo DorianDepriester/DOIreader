@@ -93,10 +93,10 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
     family_list=[]
     given_list=[]
     
-    for i,doi in enumerate(dois):
-        
-        # Ensure valid URL
+    for doi in dois:
         print('Fetching ' + doi + '...', end=' ')
+
+        # Ensure valid URL
         if doi.startswith('doi.org/'):
             doi_url='https://' + doi
         elif not doi.startswith(('http', 'https')):
