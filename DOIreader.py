@@ -92,11 +92,11 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
     df=pd.DataFrame(columns=fields + authors, index=dois)
     family_list=[]
     given_list=[]
-    
-    for doi in dois:
-        print('Fetching ' + doi + '...', end=' ')
 
+    for doi in dois:
+        
         # Ensure valid URL
+        print('Fetching ' + doi + '...', end=' ')
         if doi.startswith('doi.org/'):
             doi_url='https://' + doi
         elif not doi.startswith(('http', 'https')):
@@ -105,8 +105,8 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
             doi_url=doi
         
         # Get JSON data
-        try:
-            r = req.get(doi_url, headers={'Accept': 'application/json'})
+        r = req.get(doi_url, headers={'Accept': 'application/json'})
+        if r.ok:
             json=pd.json_normalize(r.json())
             entry=json.loc[0]
             
@@ -141,14 +141,16 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
             # Concatenate data
             df.loc[doi,fields]=(title, journal_fix, art_type, fdate, url)
             for k,author in authors.iterrows():
-                df.loc[doi,'Author{:0>2d}'.format(k+1)]=[author['family'], author['given']]
+                conc_name=[author['family'], author['given']]
+                df.loc[doi,'Author{:0>2d}'.format(k+1)]=conc_name
                 family_list.append(author['family'])
                 given_list.append(author['given'])
                 
-        except:
+        else:
             # The DOI cannot be found
+            print('Failed!')
             msg='Error {}: '.format(r.status_code) +  r.reason
-            print('\n >> ' + msg + '!')
+            print(' >> ' + msg + '!')
             df.loc[doi,'title']=msg
                 
         print('------------------')
@@ -189,7 +191,7 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
 
 #%%             
 if __name__ == "__main__":
-    df = doireader('dois.txt', merge_similar_authors=False)    
+    df = doireader('dois.txt', merge_similar_authors=True)    
     df.to_excel('Bibliography.xlsx', freeze_panes=(1,0))
         
 
