@@ -142,6 +142,8 @@ def doireader(doi_list, merge_similar_authors=False, format_author_names=None):
             df.loc[doi,fields]=(title, journal_fix, art_type, fdate, url)
             for k,author in authors.iterrows():
                 conc_name=[author['family'], author['given']]
+                if 'ORCID' in author.keys() and author['ORCID'] == author['ORCID']:
+                    conc_name.append(author['ORCID'].lstrip('http://orcid.org/'))   # If available, add ORCID nbr
                 df.loc[doi,'Author{:0>2d}'.format(k+1)]=conc_name
                 family_list.append(author['family'])
                 given_list.append(author['given'])
